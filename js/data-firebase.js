@@ -147,6 +147,58 @@ class FirebaseDataManager {
         link.download = `客户数据_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
     }
+    
+    // 统计函数
+    async getTodayCustomerCount(ownerId) {
+        const today = new Date().toISOString().split('T')[0];
+        let customers = await this.getCustomers();
+        if (ownerId) customers = customers.filter(c => c.ownerId === ownerId);
+        return customers.filter(c => c.createTime.startsWith(today)).length;
+    }
+    
+    async getCustomerStats(ownerId) {
+        let customers = await this.getCustomers();
+        if (ownerId) customers = customers.filter(c => c.ownerId === ownerId);
+        return {
+            total: customers.length,
+            new: customers.filter(c => c.status === '新客户').length,
+            following: customers.filter(c => c.status === '跟进中').length,
+            closed: customers.filter(c => c.status === '已成交').length,
+            lost: customers.filter(c => c.status === '已流失').length
+        };
+    }
+    
+    async getStaffRanking(period = 'today') {
+        const users = await this.getActiveUsers();
+        const customers = await this.getCustomers();
+        
+        let filterDate = new Date();
+        if (period === 'today') filterDate.setHours(0,0,0,0);
+        else if (period === 'week') filterDate.setDate(filterDate.getDate() - 7);
+        else if (period === 'month') filterDate.setMonth(filterDate.getMonth() - 1);
+        
+        return users.map(user => ({
+            name: user.name,
+            count: customers.filter(c => {
+                if (c.ownerId !== user.uid) return false;
+                if (period === 'all') return true;
+                return new Date(c.createTime) >= filterDate;
+            }).length
+        })).sort((a, b) => b.count - a.count);
+    }
+    
+    async getSourceDistribution(ownerId) {
+        let customers = await this.getCustomers();
+        if (ownerId) customers = customers.filter(c => c.ownerId === ownerId);
+        
+        const sources = {};
+        customers.forEach(c => {
+            sources[c.source] = (sources[c.source] || 0) + 1;
+        });
+        
+        return Object.entries(sources).map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+    }
 }
 
 // 创建全局 dataManager 实例

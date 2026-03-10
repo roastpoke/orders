@@ -73,23 +73,23 @@ function showToast(message, duration = 2000) {
 /**
  * 更新首页统计数据
  */
-function updateHomeStats() {
+async function updateHomeStats() {
     const user = dataManager.getCurrentUser();
     if (!user) return;
     
     const isAdmin = user.role === 'admin';
-    const ownerId = isAdmin ? null : user.id;
+    const ownerId = isAdmin ? null : user.uid;
     
     // 今日新增
-    const todayCount = dataManager.getTodayCustomerCount(ownerId);
+    const todayCount = await dataManager.getTodayCustomerCount(ownerId);
     document.getElementById('statTodayCount').textContent = todayCount;
     
     // 我的客户/总客户
-    const stats = dataManager.getCustomerStats(ownerId);
+    const stats = await dataManager.getCustomerStats(ownerId);
     document.getElementById('statMyCount').textContent = stats.total;
     
     // 总客户数（管理员看全部，员工看自己）
-    const totalStats = dataManager.getCustomerStats(null);
+    const totalStats = await dataManager.getCustomerStats(null);
     document.getElementById('statTotalCount').textContent = totalStats.total;
     
     // 待跟进（新客户数量）
@@ -99,9 +99,9 @@ function updateHomeStats() {
 /**
  * 更新今日排行榜
  */
-function updateTodayRanking() {
+async function updateTodayRanking() {
     const container = document.getElementById('todayRanking');
-    const ranking = dataManager.getStaffRanking('today');
+    const ranking = await dataManager.getStaffRanking('today');
     
     if (ranking.length === 0 || ranking.every(r => r.count === 0)) {
         container.innerHTML = '<div class="empty-state">今日暂无数据</div>';
@@ -122,7 +122,7 @@ function updateTodayRanking() {
 /**
  * 更新个人中心页面
  */
-function updateProfilePage() {
+async function updateProfilePage() {
     const user = dataManager.getCurrentUser();
     if (!user) return;
     
@@ -132,8 +132,8 @@ function updateProfilePage() {
     document.getElementById('profilePhone').textContent = user.phone;
     
     // 统计数据
-    const stats = dataManager.getCustomerStats(user.id);
-    const todayCount = dataManager.getTodayCustomerCount(user.id);
+    const stats = await dataManager.getCustomerStats(user.uid);
+    const todayCount = await dataManager.getTodayCustomerCount(user.uid);
     
     document.getElementById('profileCustomerCount').textContent = stats.total;
     document.getElementById('profileTodayCount').textContent = todayCount;
@@ -143,15 +143,15 @@ function updateProfilePage() {
 /**
  * 更新统计页面
  */
-function updateStatsPage() {
+async function updateStatsPage() {
     const user = dataManager.getCurrentUser();
     if (!user) return;
     
     const isAdmin = user.role === 'admin';
-    const ownerId = isAdmin ? null : user.id;
+    const ownerId = isAdmin ? null : user.uid;
     
     // 获取统计数据
-    const stats = dataManager.getCustomerStats(ownerId, currentStatsPeriod);
+    const stats = await dataManager.getCustomerStats(ownerId, currentStatsPeriod);
     
     // 更新统计数字
     document.getElementById('statsTotal').textContent = stats.total;
@@ -161,11 +161,11 @@ function updateStatsPage() {
     document.getElementById('statsLost').textContent = stats.lost;
     
     // 更新来源分布图
-    updateSourceChart(ownerId);
+    await updateSourceChart(ownerId);
     
     // 更新员工排行（管理员可见）
     if (isAdmin) {
-        updateStaffRanking();
+        await updateStaffRanking();
     }
 }
 
@@ -188,9 +188,9 @@ function changeStatsPeriod(period) {
 /**
  * 更新来源分布图表
  */
-function updateSourceChart(ownerId) {
+async function updateSourceChart(ownerId) {
     const container = document.getElementById('sourceChart');
-    const distribution = dataManager.getSourceDistribution(ownerId);
+    const distribution = await dataManager.getSourceDistribution(ownerId);
     
     if (distribution.length === 0) {
         container.innerHTML = '<div class="empty-state">暂无数据</div>';
@@ -216,9 +216,9 @@ function updateSourceChart(ownerId) {
 /**
  * 更新员工排行榜
  */
-function updateStaffRanking() {
+async function updateStaffRanking() {
     const container = document.getElementById('staffRanking');
-    const ranking = dataManager.getStaffRanking(currentStatsPeriod);
+    const ranking = await dataManager.getStaffRanking(currentStatsPeriod);
     
     if (ranking.length === 0) {
         container.innerHTML = '<div class="empty-state">暂无数据</div>';
