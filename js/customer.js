@@ -9,7 +9,7 @@ let currentCustomerId = null;
 /**
  * 添加客户
  */
-function handleAddCustomer() {
+async function handleAddCustomer() {
     const user = dataManager.getCurrentUser();
     if (!user) {
         showToast('请先登录');
@@ -48,14 +48,14 @@ function handleAddCustomer() {
     }
     
     // 检查手机号是否已存在
-    const existCustomer = dataManager.findCustomerByPhone(phone);
+    const existCustomer = await dataManager.findCustomerByPhone(phone);
     if (existCustomer) {
         showToast(`该客户已存在，归属人：${existCustomer.ownerName}`);
         return;
     }
     
     // 创建客户
-    const customer = dataManager.addCustomer({
+    const customer = await dataManager.addCustomer({
         name,
         phone,
         source,
