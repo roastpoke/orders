@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>客户管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div id="loginPage" class="page active">
+        <div class="login-container">
+            <div class="logo">
+                <div class="logo-icon">📋</div>
+                <h1>客户管理系统</h1>
+                <p class="subtitle">销售抢单记录平台</p>
+            </div>
+            
+            <div class="login-form">
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="handleLogin()">登 录</button>
+                <div class="login-links">
+                    <a href="javascript:void(0)" onclick="showPage('registerPage')">新用户注册</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册页面 -->
+    <div id="registerPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('loginPage')">←</button>
+            <h2>新用户注册</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content">
+            <div class="form-container">
+                <div class="form-group">
+                    <label>姓名 <span class="required">*</span></label>
+                    <input type="text" id="regName" placeholder="请输入您的姓名">
+                </div>
+                <div class="form-group">
+                    <label>手机号 <span class="required">*</span></label>
+                    <input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <label>密码 <span class="required">*</span></label>
+                    <input type="password" id="regPassword" placeholder="请设置密码（6位以上）">
+                </div>
+                <div class="form-group">
+                    <label>确认密码 <span class="required">*</span></label>
+                    <input type="password" id="regPassword2" placeholder="请再次输入密码">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="handleRegister()">提交注册</button>
+                <p class="form-tip">注册后需等待管理员审批才能使用</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 首页/仪表盘 -->
+    <div id="homePage" class="page">
+        <div class="header">
+            <div class="header-left">
+                <span class="user-name" id="headerUserName">用户</span>
+                <span class="user-role" id="headerUserRole">员工</span>
+            </div>
+            <h2>首页</h2>
+            <button class="icon-btn" onclick="handleLogout()">退出</button>
+        </div>
+        <div class="page-content with-tabbar">
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTodayCount">0</div>
+                    <div class="stat-label">今日新增</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statMyCount">0</div>
+                    <div class="stat-label">我的客户</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotalCount">0</div>
+                    <div class="stat-label">总客户数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statPendingCount">0</div>
+                    <div class="stat-label">待跟进</div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="section">
+                <h3 class="section-title">快捷操作</h3>
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="showPage('addCustomerPage')">
+                        <span class="action-icon">➕</span>
+                        <span>新增客户</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="showPage('customerListPage')">
+                        <span class="action-icon">📋</span>
+                        <span>客户列表</span>
+                    </button>
+                    <button class="quick-action-btn admin-only" onclick="showPage('adminPage')">
+                        <span class="action-icon">⚙️</span>
+                        <span>管理中心</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="exportData()">
+                        <span class="action-icon">📊</span>
+                        <span>导出数据</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 最近录入 -->
+            <div class="section">
+                <h3 class="section-title">最近录入</h3>
+                <div class="customer-list" id="recentCustomers">
+                    <div class="empty-state">暂无客户记录</div>
+                </div>
+            </div>
+
+            <!-- 今日排行榜 -->
+            <div class="section admin-only">
+                <h3 class="section-title">🏆 今日排行榜</h3>
+                <div class="ranking-list" id="todayRanking">
+                    <div class="empty-state">暂无数据</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部导航 -->
+        <div class="tabbar">
+            <button class="tabbar-item active" onclick="showPage('homePage')">
+                <span class="tabbar-icon">🏠</span>
+                <span class="tabbar-label">首页</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('customerListPage')">
+                <span class="tabbar-icon">📋</span>
+                <span class="tabbar-label">客户</span>
+            </button>
+            <button class="tabbar-item add-btn" onclick="showPage('addCustomerPage')">
+                <span class="tabbar-icon">➕</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('statsPage')">
+                <span class="tabbar-icon">📊</span>
+                <span class="tabbar-label">统计</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('profilePage')">
+                <span class="tabbar-icon">👤</span>
+                <span class="tabbar-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 新增客户页面 -->
+    <div id="addCustomerPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('homePage')">←</button>
+            <h2>新增客户</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content">
+            <div class="form-container">
+                <div class="form-section">
+                    <h4 class="form-section-title">基本信息</h4>
+                    <div class="form-group">
+                        <label>客户姓名 <span class="required">*</span></label>
+                        <input type="text" id="customerName" placeholder="请输入客户姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>联系电话 <span class="required">*</span></label>
+                        <input type="tel" id="customerPhone" placeholder="请输入联系电话" maxlength="11">
+                    </div>
+                    <div class="form-group">
+                        <label>客户来源 <span class="required">*</span></label>
+                        <select id="customerSource">
+                            <option value="">请选择客户来源</option>
+                            <option value="抖音">抖音</option>
+                            <option value="小红书">小红书</option>
+                            <option value="微信">微信</option>
+                            <option value="门店">门店到访</option>
+                            <option value="转介绍">客户转介绍</option>
+                            <option value="电话">电话咨询</option>
+                            <option value="其他">其他渠道</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">需求信息</h4>
+                    <div class="form-group">
+                        <label>预产期/需求日期</label>
+                        <input type="date" id="customerDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label>预算范围</label>
+                        <select id="customerBudget">
+                            <option value="">请选择预算范围</option>
+                            <option value="10万以下">10万以下</option>
+                            <option value="10-20万">10-20万</option>
+                            <option value="20-50万">20-50万</option>
+                            <option value="50-100万">50-100万</option>
+                            <option value="100万以上">100万以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>房型偏好</label>
+                        <select id="customerRoomType">
+                            <option value="">请选择房型偏好</option>
+                            <option value="1居室">1居室</option>
+                            <option value="2居室">2居室</option>
+                            <option value="3居室">3居室</option>
+                            <option value="4居室及以上">4居室及以上</option>
+                            <option value="别墅">别墅</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">其他信息</h4>
+                    <div class="form-group">
+                        <label>客户状态</label>
+                        <select id="customerStatus">
+                            <option value="新客户">新客户</option>
+                            <option value="跟进中">跟进中</option>
+                            <option value="已成交">已成交</option>
+                            <option value="已流失">已流失</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>备注信息</label>
+                        <textarea id="customerRemark" placeholder="请输入备注信息" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-block" onclick="handleAddCustomer()">提交保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 客户列表页面 -->
+    <div id="customerListPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('homePage')">←</button>
+            <h2>客户列表</h2>
+            <button class="icon-btn" onclick="toggleSearch()">🔍</button>
+        </div>
+        <div class="search-bar" id="searchBar">
+            <input type="text" id="searchInput" placeholder="搜索客户姓名/电话" oninput="searchCustomers()">
+            <select id="filterSource" onchange="searchCustomers()">
+                <option value="">全部来源</option>
+                <option value="抖音">抖音</option>
+                <option value="小红书">小红书</option>
+                <option value="微信">微信</option>
+                <option value="门店">门店</option>
+                <option value="转介绍">转介绍</option>
+                <option value="电话">电话</option>
+                <option value="其他">其他</option>
+            </select>
+            <select id="filterStatus" onchange="searchCustomers()">
+                <option value="">全部状态</option>
+                <option value="新客户">新客户</option>
+                <option value="跟进中">跟进中</option>
+                <option value="已成交">已成交</option>
+                <option value="已流失">已流失</option>
+            </select>
+        </div>
+        <div class="page-content with-tabbar">
+            <div class="customer-list" id="customerList">
+                <div class="empty-state">暂无客户记录</div>
+            </div>
+        </div>
+        
+        <!-- 底部导航 -->
+        <div class="tabbar">
+            <button class="tabbar-item" onclick="showPage('homePage')">
+                <span class="tabbar-icon">🏠</span>
+                <span class="tabbar-label">首页</span>
+            </button>
+            <button class="tabbar-item active" onclick="showPage('customerListPage')">
+                <span class="tabbar-icon">📋</span>
+                <span class="tabbar-label">客户</span>
+            </button>
+            <button class="tabbar-item add-btn" onclick="showPage('addCustomerPage')">
+                <span class="tabbar-icon">➕</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('statsPage')">
+                <span class="tabbar-icon">📊</span>
+                <span class="tabbar-label">统计</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('profilePage')">
+                <span class="tabbar-icon">👤</span>
+                <span class="tabbar-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 客户详情页面 -->
+    <div id="customerDetailPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('customerListPage')">←</button>
+            <h2>客户详情</h2>
+            <button class="icon-btn" id="editCustomerBtn" onclick="editCurrentCustomer()">✏️</button>
+        </div>
+        <div class="page-content">
+            <div class="detail-container" id="customerDetail">
+                <!-- 动态填充 -->
+            </div>
+            
+            <!-- 跟进记录 -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">跟进记录</h3>
+                    <button class="btn btn-small" onclick="showAddFollowUp()">+ 添加</button>
+                </div>
+                <div class="followup-list" id="followupList">
+                    <div class="empty-state">暂无跟进记录</div>
+                </div>
+            </div>
+
+            <div class="detail-actions">
+                <button class="btn btn-outline" onclick="callCustomer()">📞 拨打电话</button>
+                <button class="btn btn-danger" id="deleteCustomerBtn" onclick="deleteCurrentCustomer()">🗑️ 删除客户</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑客户页面 -->
+    <div id="editCustomerPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('customerDetailPage')">←</button>
+            <h2>编辑客户</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content">
+            <div class="form-container">
+                <div class="form-section">
+                    <h4 class="form-section-title">基本信息</h4>
+                    <div class="form-group">
+                        <label>客户姓名 <span class="required">*</span></label>
+                        <input type="text" id="editCustomerName" placeholder="请输入客户姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>联系电话 <span class="required">*</span></label>
+                        <input type="tel" id="editCustomerPhone" placeholder="请输入联系电话" maxlength="11">
+                    </div>
+                    <div class="form-group">
+                        <label>客户来源</label>
+                        <select id="editCustomerSource">
+                            <option value="">请选择客户来源</option>
+                            <option value="抖音">抖音</option>
+                            <option value="小红书">小红书</option>
+                            <option value="微信">微信</option>
+                            <option value="门店">门店到访</option>
+                            <option value="转介绍">客户转介绍</option>
+                            <option value="电话">电话咨询</option>
+                            <option value="其他">其他渠道</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">需求信息</h4>
+                    <div class="form-group">
+                        <label>预产期/需求日期</label>
+                        <input type="date" id="editCustomerDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label>预算范围</label>
+                        <select id="editCustomerBudget">
+                            <option value="">请选择预算范围</option>
+                            <option value="10万以下">10万以下</option>
+                            <option value="10-20万">10-20万</option>
+                            <option value="20-50万">20-50万</option>
+                            <option value="50-100万">50-100万</option>
+                            <option value="100万以上">100万以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>房型偏好</label>
+                        <select id="editCustomerRoomType">
+                            <option value="">请选择房型偏好</option>
+                            <option value="1居室">1居室</option>
+                            <option value="2居室">2居室</option>
+                            <option value="3居室">3居室</option>
+                            <option value="4居室及以上">4居室及以上</option>
+                            <option value="别墅">别墅</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-section-title">其他信息</h4>
+                    <div class="form-group">
+                        <label>客户状态</label>
+                        <select id="editCustomerStatus">
+                            <option value="新客户">新客户</option>
+                            <option value="跟进中">跟进中</option>
+                            <option value="已成交">已成交</option>
+                            <option value="已流失">已流失</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>备注信息</label>
+                        <textarea id="editCustomerRemark" placeholder="请输入备注信息" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-block" onclick="handleUpdateCustomer()">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计页面 -->
+    <div id="statsPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('homePage')">←</button>
+            <h2>数据统计</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content with-tabbar">
+            <!-- 时间筛选 -->
+            <div class="filter-tabs">
+                <button class="filter-tab active" onclick="changeStatsPeriod('today')">今日</button>
+                <button class="filter-tab" onclick="changeStatsPeriod('week')">本周</button>
+                <button class="filter-tab" onclick="changeStatsPeriod('month')">本月</button>
+                <button class="filter-tab" onclick="changeStatsPeriod('all')">全部</button>
+            </div>
+
+            <!-- 统计概览 -->
+            <div class="stats-overview">
+                <div class="stat-big-card">
+                    <div class="stat-big-value" id="statsTotal">0</div>
+                    <div class="stat-big-label">客户总数</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statsNew">0</div>
+                    <div class="stat-label">新客户</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statsFollowing">0</div>
+                    <div class="stat-label">跟进中</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statsClosed">0</div>
+                    <div class="stat-label">已成交</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statsLost">0</div>
+                    <div class="stat-label">已流失</div>
+                </div>
+            </div>
+
+            <!-- 来源分布 -->
+            <div class="section">
+                <h3 class="section-title">📊 客户来源分布</h3>
+                <div class="chart-container" id="sourceChart">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 员工排行 -->
+            <div class="section admin-only">
+                <h3 class="section-title">🏆 员工业绩排行</h3>
+                <div class="ranking-list" id="staffRanking">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="tabbar">
+            <button class="tabbar-item" onclick="showPage('homePage')">
+                <span class="tabbar-icon">🏠</span>
+                <span class="tabbar-label">首页</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('customerListPage')">
+                <span class="tabbar-icon">📋</span>
+                <span class="tabbar-label">客户</span>
+            </button>
+            <button class="tabbar-item add-btn" onclick="showPage('addCustomerPage')">
+                <span class="tabbar-icon">➕</span>
+            </button>
+            <button class="tabbar-item active" onclick="showPage('statsPage')">
+                <span class="tabbar-icon">📊</span>
+                <span class="tabbar-label">统计</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('profilePage')">
+                <span class="tabbar-icon">👤</span>
+                <span class="tabbar-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 个人中心页面 -->
+    <div id="profilePage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('homePage')">←</button>
+            <h2>个人中心</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content with-tabbar">
+            <div class="profile-header">
+                <div class="avatar">👤</div>
+                <div class="profile-info">
+                    <h3 id="profileName">用户名</h3>
+                    <p id="profileRole">员工</p>
+                    <p id="profilePhone">手机号</p>
+                </div>
+            </div>
+
+            <div class="profile-stats">
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileCustomerCount">0</div>
+                    <div class="profile-stat-label">我的客户</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileTodayCount">0</div>
+                    <div class="profile-stat-label">今日新增</div>
+                </div>
+                <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileClosedCount">0</div>
+                    <div class="profile-stat-label">已成交</div>
+                </div>
+            </div>
+
+            <div class="menu-list">
+                <div class="menu-item" onclick="showPage('myCustomersPage')">
+                    <span class="menu-icon">📋</span>
+                    <span class="menu-text">我的客户</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item" onclick="changePassword()">
+                    <span class="menu-icon">🔐</span>
+                    <span class="menu-text">修改密码</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item admin-only" onclick="showPage('adminPage')">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">管理中心</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item" onclick="showAbout()">
+                    <span class="menu-icon">ℹ️</span>
+                    <span class="menu-text">关于系统</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+            </div>
+
+            <button class="btn btn-outline btn-block logout-btn" onclick="handleLogout()">退出登录</button>
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="tabbar">
+            <button class="tabbar-item" onclick="showPage('homePage')">
+                <span class="tabbar-icon">🏠</span>
+                <span class="tabbar-label">首页</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('customerListPage')">
+                <span class="tabbar-icon">📋</span>
+                <span class="tabbar-label">客户</span>
+            </button>
+            <button class="tabbar-item add-btn" onclick="showPage('addCustomerPage')">
+                <span class="tabbar-icon">➕</span>
+            </button>
+            <button class="tabbar-item" onclick="showPage('statsPage')">
+                <span class="tabbar-icon">📊</span>
+                <span class="tabbar-label">统计</span>
+            </button>
+            <button class="tabbar-item active" onclick="showPage('profilePage')">
+                <span class="tabbar-icon">👤</span>
+                <span class="tabbar-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 管理中心页面 -->
+    <div id="adminPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('homePage')">←</button>
+            <h2>管理中心</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content">
+            <div class="admin-menu">
+                <div class="menu-item" onclick="showPage('userManagePage')">
+                    <span class="menu-icon">👥</span>
+                    <span class="menu-text">用户管理</span>
+                    <span class="menu-badge" id="pendingUserCount">0</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item" onclick="showPage('allCustomersPage')">
+                    <span class="menu-icon">📋</span>
+                    <span class="menu-text">所有客户</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item" onclick="showPage('statsPage')">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-text">数据统计</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+                <div class="menu-item" onclick="exportAllData()">
+                    <span class="menu-icon">📥</span>
+                    <span class="menu-text">导出全部数据</span>
+                    <span class="menu-arrow">›</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户管理页面 -->
+    <div id="userManagePage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('adminPage')">←</button>
+            <h2>用户管理</h2>
+            <div class="header-right"></div>
+        </div>
+        <div class="page-content">
+            <!-- 待审批用户 -->
+            <div class="section">
+                <h3 class="section-title">待审批用户</h3>
+                <div class="user-list" id="pendingUsers">
+                    <div class="empty-state">暂无待审批用户</div>
+                </div>
+            </div>
+            
+            <!-- 已激活用户 -->
+            <div class="section">
+                <h3 class="section-title">已激活用户</h3>
+                <div class="user-list" id="activeUsers">
+                    <div class="empty-state">暂无用户</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 所有客户页面(管理员) -->
+    <div id="allCustomersPage" class="page">
+        <div class="header">
+            <button class="back-btn" onclick="showPage('adminPage')">←</button>
+            <h2>所有客户</h2>
+            <button class="icon-btn" onclick="toggleAllSearch()">🔍</button>
+        </div>
+        <div class="search-bar" id="allSearchBar">
+            <input type="text" id="allSearchInput" placeholder="搜索客户姓名/电话/跟进人" oninput="searchAllCustomers()">
+        </div>
+        <div class="page-content">
+            <div class="customer-list" id="allCustomerList">
+                <div class="empty-state">暂无客户记录</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加跟进弹窗 -->
+    <div id="followupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加跟进记录</h3>
+                <button class="close-btn" onclick="closeFollowupModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>跟进内容</label>
+                    <textarea id="followupContent" placeholder="请输入跟进内容" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>跟进方式</label>
+                    <select id="followupType">
+                        <option value="电话">电话</option>
+                        <option value="微信">微信</option>
+                        <option value="面谈">面谈</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeFollowupModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveFollowup()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码弹窗 -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>修改密码</h3>
+                <button class="close-btn" onclick="closePasswordModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>原密码</label>
+                    <input type="password" id="oldPassword" placeholder="请输入原密码">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="newPassword" placeholder="请输入新密码">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="confirmPassword" placeholder="请再次输入新密码">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closePasswordModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveNewPassword()">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div id="toast" class="toast"></div>
+    
+    <!-- 加载提示 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <!-- 加载JS - Firebase版本 -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/data-firebase.js"></script>
+    <script src="js/auth-firebase.js"></script>
+    <script src="js/customer.js"></script>
+    <script src="js/app.js"></script>
+    
+    <style>
+    .loading-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+    .loading-overlay.active{display:flex}
+    .loading-spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{color:white;margin-top:16px;font-size:14px}
+    </style>
+</body>
+</html>
