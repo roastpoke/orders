@@ -1,6 +1,5 @@
 // Firebase数据管理 - 替换data.js使用
-const db = firebase.firestore();
-const auth = firebase.auth();
+// db 和 auth 已在 firebase-config.js 中定义
 
 class FirebaseDataManager {
     getCurrentTime() {
