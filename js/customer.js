@@ -99,7 +99,7 @@ function clearAddCustomerForm() {
 /**
  * 加载客户列表
  */
-function loadCustomerList() {
+async function loadCustomerList() {
     const user = dataManager.getCurrentUser();
     if (!user) return;
     
@@ -108,9 +108,9 @@ function loadCustomerList() {
     
     // 管理员看所有，员工只看自己的
     if (user.role === 'admin') {
-        customers = dataManager.searchCustomers('', {});
+        customers = await dataManager.getCustomers();
     } else {
-        customers = dataManager.searchCustomers('', { ownerId: user.id });
+        customers = await dataManager.getCustomersByOwner(user.uid);
     }
     
     renderCustomerList(container, customers);
@@ -500,7 +500,7 @@ function exportAllData() {
 /**
  * 更新最近录入客户
  */
-function updateRecentCustomers() {
+async function updateRecentCustomers() {
     const user = dataManager.getCurrentUser();
     if (!user) return;
     
@@ -508,10 +508,12 @@ function updateRecentCustomers() {
     let customers;
     
     if (user.role === 'admin') {
-        customers = dataManager.searchCustomers('', {}).slice(0, 5);
+        customers = await dataManager.getCustomers();
     } else {
-        customers = dataManager.searchCustomers('', { ownerId: user.id }).slice(0, 5);
+        customers = await dataManager.getCustomersByOwner(user.uid);
     }
+    
+    customers = customers.slice(0, 5);
     
     if (customers.length === 0) {
         container.innerHTML = '<div class="empty-state">暂无客户记录</div>';
