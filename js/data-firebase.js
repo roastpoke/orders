@@ -150,4 +150,6 @@ class FirebaseDataManager {
     }
 }
 
+// 创建全局 dataManager 实例
 const dataManager = new FirebaseDataManager();
+window.dataManager = dataManager;

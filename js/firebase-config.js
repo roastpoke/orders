@@ -5,12 +5,12 @@
 
 // Firebase 配置 - 部署时替换
 const firebaseConfig = {
-    apiKey: "AIzaSyDemoKey123456789",  // 替换为你的
-    authDomain: "your-project.firebaseapp.com",
-    projectId: "your-project-id",
-    storageBucket: "your-project.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abc123"
+    apiKey: "AIzaSyDfbeH_XUcWdWMXJCIJWZXTE3wBFCTtuDA",  // 替换为你的
+    authDomain: "customer-crm-e7151.firebaseapp.com",
+    projectId: "customer-crm-e7151",
+    storageBucket: "customer-crm-e7151.firebasestorage.app",
+    messagingSenderId: "1052018704171",
+    appId: "1:1052018704171:web:fb67973ebf5593ed7acf6e"
 };
 
 // 初始化 Firebase
